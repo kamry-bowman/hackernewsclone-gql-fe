@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { Mutation } from 'react-apollo';
+import { RouteComponentProps } from 'react-router-dom';
 import gql from 'graphql-tag';
 
 interface Form {
@@ -19,7 +20,7 @@ const POST_MUTATION = gql`
 
 class PostMutation extends Mutation<{}, Form> {}
 
-class CreateLink extends Component<{}, Form> {
+class CreateLink extends Component<RouteComponentProps, Form> {
   state = {
     description: '',
     url: '',
@@ -45,7 +46,11 @@ class CreateLink extends Component<{}, Form> {
             placeholder="The URL for the link"
           />
         </div>
-        <PostMutation mutation={POST_MUTATION} variables={{ description, url }}>
+        <PostMutation
+          mutation={POST_MUTATION}
+          variables={{ description, url }}
+          onCompleted={() => this.props.history.push('/')}
+        >
           {postMutation => (
             <button onClick={e => postMutation()}>Submit</button>
           )}
