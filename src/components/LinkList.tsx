@@ -222,7 +222,7 @@ class LinkList extends Component<MatchRouteProps, {}> {
           const linksToRender = this._getLinksToRender(data);
           const isNewPage = this.props.location.pathname.includes('new');
           const pageIndex = this.props.match.params.page
-            ? (Number(this.props.match.params.page) - 1) * LINKS_PER_PAGE
+            ? (parseInt(this.props.match.params.page, 10) - 1) * LINKS_PER_PAGE
             : 0;
           return (
             <React.Fragment>
