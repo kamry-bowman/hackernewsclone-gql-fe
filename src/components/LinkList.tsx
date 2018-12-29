@@ -7,7 +7,9 @@ interface LinkI {
   id: string;
   description: string;
   url: string;
-  // createdAt: string;
+  createdAt: string;
+  postedBy: { name: string };
+  votes: Array<{ id: string }>;
 }
 
 interface Data {
@@ -31,16 +33,20 @@ interface Variables {
   orderBy: LinkOrderByInput;
 }
 
-class LinkListQuery extends Query<Data, Variables> {}
-
 const FEED_QUERY = gql`
   {
     feed {
       links {
         id
-        # createdAt
+        createdAt
         url
         description
+        postedBy {
+          name
+        }
+        votes {
+          id
+        }
       }
     }
   }
@@ -61,8 +67,8 @@ class LinkList extends Component {
           const linksToRender = data ? data.feed.links : [];
           return (
             <div>
-              {linksToRender.map((link: LinkI) => (
-                <Link key={link.id} link={link} />
+              {linksToRender.map((link: LinkI, i: number) => (
+                <Link key={link.id} link={link} index={i} />
               ))}
             </div>
           );
