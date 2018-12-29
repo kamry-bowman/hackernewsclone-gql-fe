@@ -1,8 +1,10 @@
 import React, { Component } from 'react';
 import { Query, SubscriptionResult } from 'react-apollo';
 import gql from 'graphql-tag';
-import Link from './Link';
 import { InMemoryCache } from 'apollo-cache-inmemory';
+import { RouteComponentProps } from 'react-router';
+import Link from './Link';
+import { LINKS_PER_PAGE } from '../constants';
 
 export interface LinkI {
   id: string;
@@ -12,6 +14,8 @@ export interface LinkI {
   postedBy: { name: string; id: string };
   votes: Array<{ id: string; user: { id: string } }>;
 }
+
+type MatchRouteProps = RouteComponentProps<{ page: string }>;
 
 interface VoteI {
   id: string;
@@ -26,6 +30,7 @@ export interface DataI {
   feed: {
     links: LinkI[];
     __typename?: string;
+    count: number;
   };
 }
 
@@ -45,8 +50,8 @@ interface Variables {
 }
 
 export const FEED_QUERY = gql`
-  {
-    feed {
+  query FeedQuery($first: Int, $skip: Int, $orderBy: LinkOrderByInput) {
+    feed(first: $first, skip: $skip, orderBy: $orderBy) {
       links {
         id
         createdAt
@@ -63,6 +68,7 @@ export const FEED_QUERY = gql`
           }
         }
       }
+      count
     }
   }
 `;
@@ -115,7 +121,7 @@ const NEW_VOTES_SUBSCRIPTION = gql`
   }
 `;
 
-class LinkList extends Component {
+class LinkList extends Component<MatchRouteProps, {}> {
   _updateCacheAfterVote = (
     store: InMemoryCache,
     createdVote: VoteI,
@@ -161,9 +167,46 @@ class LinkList extends Component {
     });
   };
 
+  _getLinksToRender = (data: DataI) => {
+    const isNewPage = this.props.location.pathname.includes('new');
+    if (isNewPage) {
+      return data.feed.links;
+    }
+    const rankedLinks = data.feed.links.slice();
+    rankedLinks.sort((l1, l2) => l2.votes.length - l1.votes.length);
+    return rankedLinks;
+  };
+
+  _getQueryVariables = () => {
+    const isNewPage = this.props.location.pathname.includes('new');
+    const page = parseInt(this.props.match.params.page, 10);
+
+    const skip = isNewPage ? (page - 1) * LINKS_PER_PAGE : 0;
+    const first = isNewPage ? LINKS_PER_PAGE : 100;
+    const orderBy = isNewPage ? 'createdAt_DESC' : null;
+
+    return { first, skip, orderBy };
+  };
+
+  _nextPage = (data: DataI) => {
+    const page = parseInt(this.props.match.params.page, 10);
+    if (page <= data.feed.count / LINKS_PER_PAGE) {
+      const nextPage = page + 1;
+      this.props.history.push(`/new/${nextPage}`);
+    }
+  };
+
+  _previousPage = () => {
+    const page = parseInt(this.props.match.params.page, 10);
+    if (page > 1) {
+      const previousPage = page - 1;
+      this.props.history.push(`/new/${previousPage}`);
+    }
+  };
+
   render() {
     return (
-      <Query query={FEED_QUERY}>
+      <Query query={FEED_QUERY} variables={this._getQueryVariables()}>
         {({ loading, error, data, subscribeToMore }) => {
           if (loading) {
             return <div>Fetching</div>;
@@ -176,9 +219,13 @@ class LinkList extends Component {
           this._subscribeToNewLinks(subscribeToMore);
           this._subscribeToNewVotes(subscribeToMore);
 
-          const linksToRender = data ? data.feed.links : [];
+          const linksToRender = this._getLinksToRender(data);
+          const isNewPage = this.props.location.pathname.includes('new');
+          const pageIndex = this.props.match.params.page
+            ? (Number(this.props.match.params.page) - 1) * LINKS_PER_PAGE
+            : 0;
           return (
-            <div>
+            <React.Fragment>
               {linksToRender.map((link: LinkI, i: number) => (
                 <Link
                   key={link.id}
@@ -187,7 +234,20 @@ class LinkList extends Component {
                   updateStoreAfterVote={this._updateCacheAfterVote}
                 />
               ))}
-            </div>
+              {isNewPage && (
+                <div className="flex ml4 mv3 gray">
+                  <div
+                    className="pointer mr2"
+                    onClick={e => this._previousPage()}
+                  >
+                    Previous
+                  </div>
+                  <div className="pointer" onClick={e => this._nextPage(data)}>
+                    Next
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
           );
         }}
       </Query>
