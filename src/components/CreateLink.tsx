@@ -1,11 +1,16 @@
 import React, { Component } from 'react';
 import { Mutation } from 'react-apollo';
 import { RouteComponentProps } from 'react-router-dom';
+import { FEED_QUERY, DataI, LinkI } from './LinkList';
 import gql from 'graphql-tag';
 
 interface Form {
   description: string;
   url: string;
+}
+
+interface PostData {
+  post: LinkI;
 }
 
 const POST_MUTATION = gql`
@@ -18,7 +23,7 @@ const POST_MUTATION = gql`
   }
 `;
 
-class PostMutation extends Mutation<{}, Form> {}
+class PostMutation extends Mutation<PostData, Form> {}
 
 class CreateLink extends Component<RouteComponentProps, Form> {
   state = {
@@ -50,6 +55,19 @@ class CreateLink extends Component<RouteComponentProps, Form> {
           mutation={POST_MUTATION}
           variables={{ description, url }}
           onCompleted={() => this.props.history.push('/')}
+          update={(store, { data: resData }) => {
+            if (resData && resData.post) {
+              const post = resData.post;
+              const data = store.readQuery<DataI>({ query: FEED_QUERY });
+              if (data && data.feed) {
+                data.feed.links.unshift(post);
+                store.writeQuery({
+                  query: FEED_QUERY,
+                  data,
+                });
+              }
+            }
+          }}
         >
           {postMutation => (
             <button onClick={e => postMutation()}>Submit</button>

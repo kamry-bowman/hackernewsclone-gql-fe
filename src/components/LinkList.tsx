@@ -4,7 +4,7 @@ import gql from 'graphql-tag';
 import Link from './Link';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 
-interface LinkI {
+export interface LinkI {
   id: string;
   description: string;
   url: string;
@@ -18,7 +18,7 @@ interface VoteI {
   link: LinkI;
 }
 
-interface Data {
+export interface DataI {
   feed: {
     links: LinkI[];
   };
@@ -39,7 +39,7 @@ interface Variables {
   orderBy: LinkOrderByInput;
 }
 
-const FEED_QUERY = gql`
+export const FEED_QUERY = gql`
   {
     feed {
       links {
@@ -64,7 +64,7 @@ class LinkList extends Component {
     createdVote: VoteI,
     linkId: string
   ) => {
-    const data = store.readQuery<Data>({ query: FEED_QUERY });
+    const data = store.readQuery<DataI>({ query: FEED_QUERY });
 
     let votedLink = data.feed.links.find(link => link.id === linkId);
     if (votedLink) {
