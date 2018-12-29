@@ -9,13 +9,14 @@ import { createHttpLink } from 'apollo-link-http';
 import { setContext } from 'apollo-link-context';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import { BrowserRouter } from 'react-router-dom';
+import { AUTH_TOKEN } from './constants';
 
 const httpLink = createHttpLink({
   uri: 'http://localhost:4000',
 });
 
 const authLink = setContext((_, { headers }) => {
-  const token = process.env.REACT_APP_DEFAULT_TOKEN;
+  const token = localStorage.getItem(AUTH_TOKEN);
   return {
     headers: {
       ...headers,
