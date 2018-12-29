@@ -9,8 +9,8 @@ export interface LinkI {
   description: string;
   url: string;
   createdAt: string;
-  postedBy: { name: string };
-  votes: Array<{ id: string }>;
+  postedBy: { name: string; id: string };
+  votes: Array<{ id: string; user: { id: string } }>;
 }
 
 interface VoteI {
@@ -48,10 +48,14 @@ export const FEED_QUERY = gql`
         url
         description
         postedBy {
+          id
           name
         }
         votes {
           id
+          user {
+            id
+          }
         }
       }
     }
@@ -64,7 +68,7 @@ class LinkList extends Component {
     createdVote: VoteI,
     linkId: string
   ) => {
-    const data = store.readQuery<DataI>({ query: FEED_QUERY });
+    const data = store.readQuery<DataI, Variables>({ query: FEED_QUERY });
 
     let votedLink = data.feed.links.find(link => link.id === linkId);
     if (votedLink) {
