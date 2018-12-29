@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Query } from 'react-apollo';
 import gql from 'graphql-tag';
 import Link from './Link';
+import { InMemoryCache } from 'apollo-cache-inmemory';
 
 interface LinkI {
   id: string;
@@ -10,6 +11,11 @@ interface LinkI {
   createdAt: string;
   postedBy: { name: string };
   votes: Array<{ id: string }>;
+}
+
+interface VoteI {
+  id: string;
+  link: LinkI;
 }
 
 interface Data {
@@ -53,6 +59,20 @@ const FEED_QUERY = gql`
 `;
 
 class LinkList extends Component {
+  _updateCacheAfterVote = (
+    store: InMemoryCache,
+    createdVote: VoteI,
+    linkId: string
+  ) => {
+    const data = store.readQuery<Data>({ query: FEED_QUERY });
+
+    let votedLink = data.feed.links.find(link => link.id === linkId);
+    if (votedLink) {
+      votedLink.votes = createdVote.link.votes;
+    }
+    store.writeQuery({ query: FEED_QUERY, data });
+  };
+
   render() {
     return (
       <Query query={FEED_QUERY}>
@@ -68,7 +88,12 @@ class LinkList extends Component {
           return (
             <div>
               {linksToRender.map((link: LinkI, i: number) => (
-                <Link key={link.id} link={link} index={i} />
+                <Link
+                  key={link.id}
+                  link={link}
+                  index={i}
+                  updateStoreAfterVote={this._updateCacheAfterVote}
+                />
               ))}
             </div>
           );

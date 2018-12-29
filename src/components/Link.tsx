@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { AUTH_TOKEN } from '../constants';
 import gql from 'graphql-tag';
 import { timeDifferenceForDate } from '../utils';
-import { Mutation } from 'react-apollo';
+import { Mutation, MutationUpdaterFn } from 'react-apollo';
 
 interface LinkProps {
   index: number;
@@ -14,6 +14,7 @@ interface LinkProps {
     postedBy: { name: string };
     votes: Array<{ id: string }>;
   };
+  updateStoreAfterVote: Function;
 }
 
 const VOTE_MUTATION = gql`
@@ -47,6 +48,13 @@ class Link extends Component<LinkProps> {
             <Mutation
               mutation={VOTE_MUTATION}
               variables={{ linkId: this.props.link.id }}
+              update={(store, { data: { vote } }) => {
+                return this.props.updateStoreAfterVote(
+                  store,
+                  vote,
+                  this.props.link.id
+                );
+              }}
             >
               {voteMutation => (
                 <div className="ml1 gray fll" onClick={e => voteMutation()}>
