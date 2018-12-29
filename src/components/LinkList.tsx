@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Query } from 'react-apollo';
+import { Query, SubscriptionResult } from 'react-apollo';
 import gql from 'graphql-tag';
 import Link from './Link';
 import { InMemoryCache } from 'apollo-cache-inmemory';
@@ -18,9 +18,14 @@ interface VoteI {
   link: LinkI;
 }
 
+type LinkSubscription = SubscriptionResult<{
+  newLink: VoteI;
+}>;
+
 export interface DataI {
   feed: {
     links: LinkI[];
+    __typename?: string;
   };
 }
 
@@ -62,6 +67,27 @@ export const FEED_QUERY = gql`
   }
 `;
 
+const NEW_LINKS_SUBSCRIPTION = gql`
+  subscription {
+    newLink {
+      id
+      url
+      description
+      createdAt
+      postedBy {
+        id
+        name
+      }
+      votes {
+        id
+        user {
+          id
+        }
+      }
+    }
+  }
+`;
+
 class LinkList extends Component {
   _updateCacheAfterVote = (
     store: InMemoryCache,
@@ -77,10 +103,35 @@ class LinkList extends Component {
     store.writeQuery({ query: FEED_QUERY, data });
   };
 
+  _subscribeToNewLinks = (subscribeToMore: Function) => {
+    subscribeToMore({
+      document: NEW_LINKS_SUBSCRIPTION,
+      updateQuery: (
+        prev: DataI,
+        { subscriptionData }: { subscriptionData: LinkSubscription }
+      ) => {
+        if (!subscriptionData.data) {
+          return prev;
+        }
+        const newLink = subscriptionData.data.newLink;
+
+        const result = {
+          ...prev,
+          feed: {
+            ...prev.feed,
+            links: [newLink, ...prev.feed.links],
+          },
+        };
+
+        return result;
+      },
+    });
+  };
+
   render() {
     return (
       <Query query={FEED_QUERY}>
-        {({ loading, error, data }) => {
+        {({ loading, error, data, subscribeToMore }) => {
           if (loading) {
             return <div>Fetching</div>;
           }
@@ -88,6 +139,9 @@ class LinkList extends Component {
             console.dir(error);
             return <div>Error</div>;
           }
+
+          this._subscribeToNewLinks(subscribeToMore);
+
           const linksToRender = data ? data.feed.links : [];
           return (
             <div>
